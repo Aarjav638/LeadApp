@@ -1,10 +1,11 @@
 import * as React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import AddLead from '../../screens/AddLead';
 import Home from '../../screens/Home';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import {StatusBar} from 'react-native';
+import {Alert, StatusBar} from 'react-native';
+import {handleDownload} from '../../utils/helper';
+import {useDatabase} from '../../hooks/useDataBase';
 
 export type BottomTabParamList = {
   Home: undefined;
@@ -14,6 +15,7 @@ export type BottomTabParamList = {
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
 export default function BottomTabNavigator() {
+  const {db} = useDatabase();
   return (
     <>
       <StatusBar
@@ -38,15 +40,21 @@ export default function BottomTabNavigator() {
           options={{
             title: 'All Leads',
             tabBarLabel: 'Leads',
+            // eslint-disable-next-line react/no-unstable-nested-components
             headerRight: () => (
               <Icon
                 name="download"
                 size={20}
                 color="blue"
-                style={{marginRight: 10}}
-                onPress={() => console.log('Download Leads')}
+                style={{marginRight: '10%'}}
+                onPress={
+                  db
+                    ? () => handleDownload(db)
+                    : () => Alert.alert('Database not found')
+                }
               />
             ),
+            // eslint-disable-next-line react/no-unstable-nested-components
             tabBarIcon: ({focused}) => (
               <Icon name="list" size={20} color={focused ? 'blue' : 'black'} />
             ),
@@ -58,6 +66,7 @@ export default function BottomTabNavigator() {
           options={{
             title: 'Add Lead',
             tabBarLabel: 'Add',
+            // eslint-disable-next-line react/no-unstable-nested-components
             tabBarIcon: ({focused}) => (
               <Icon name="plus" size={20} color={focused ? 'blue' : 'black'} />
             ),

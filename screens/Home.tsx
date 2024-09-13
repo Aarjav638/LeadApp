@@ -6,10 +6,9 @@ import {
   Alert,
   BackHandler,
   useColorScheme,
-  Touchable,
   TouchableOpacity,
 } from 'react-native';
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {BottomTabParamList} from '../components/Navigation/BottomTabNavigation';
 import {LeadType} from '../database/typing';
@@ -19,7 +18,6 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {FlatList} from 'react-native';
 import {Icon, Modal, Portal} from 'react-native-paper';
-import LeadEditForm from '../components/lead/LeadEditModal';
 import {RootStackParamList} from '../components/Navigation/StackNavigator';
 
 type HomeProps = NativeStackScreenProps<
@@ -30,14 +28,24 @@ type HomeProps = NativeStackScreenProps<
 const Home = ({navigation, route}: HomeProps) => {
   const isDarkMode = useColorScheme() === 'dark';
   const {db, error, loading} = useDatabase();
-
+  const [selectedItem, setSelectedItem] = useState<LeadType | null>(null);
   const [leads, setLeads] = useState<LeadType[]>([]);
 
   const [visible, setVisible] = React.useState(false);
 
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
-  const containerStyle = {backgroundColor: 'white', padding: 20};
+
+  const containerStyle = {
+    backgroundColor: isDarkMode ? 'black' : '#f4f4f4',
+    padding: 20,
+    margin: 20,
+    height: '35%',
+    borderRadius: 10,
+    width: '90%',
+    justifyContent: 'flex-start',
+    gap: 15,
+  };
   const handleNavigation = () => {
     navigation.navigate('Add');
   };
@@ -85,6 +93,7 @@ const Home = ({navigation, route}: HomeProps) => {
       return () => {
         BackHandler.removeEventListener('hardwareBackPress', handleBackPress);
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [route.name]),
   );
 
@@ -104,11 +113,16 @@ const Home = ({navigation, route}: HomeProps) => {
   const handleUpdate = (item: LeadType) => {
     navigation.navigate('Edit', {lead: item});
   };
+  const handleOnPress = (item: LeadType) => {
+    setSelectedItem(item);
+    showModal();
+  };
 
   const renderLeadItem = ({item}: {item: LeadType}) => (
     <TouchableOpacity
       activeOpacity={0.8}
-      onPress={() => console.log('ViewDetails', item)}
+      onLongPress={() => handleOnPress(item)}
+      onPress={() => handleUpdate(item)}
       style={{
         ...styles.cardWrapper,
         backgroundColor: isDarkMode ? '#f4f4f4' : 'black',
@@ -244,6 +258,48 @@ const Home = ({navigation, route}: HomeProps) => {
           keyExtractor={(_, index) => index.toString()}
           renderItem={renderLeadItem}
         />
+        {selectedItem && (
+          <Portal>
+            <Modal
+              style={{
+                justifyContent: 'center',
+                flex: 1,
+                alignSelf: 'center',
+              }}
+              visible={visible}
+              onDismiss={hideModal}
+              contentContainerStyle={containerStyle}>
+              <Text
+                style={{
+                  ...styles.leadText,
+                  color: isDarkMode ? '#f4f4f4' : 'black',
+                }}>
+                Name: {selectedItem.name}
+              </Text>
+              <Text
+                style={{
+                  ...styles.leadText,
+                  color: isDarkMode ? '#f4f4f4' : 'black',
+                }}>
+                Phone: {selectedItem.phone}
+              </Text>
+              <Text
+                style={{
+                  ...styles.leadText,
+                  color: isDarkMode ? '#f4f4f4' : 'black',
+                }}>
+                Description: {selectedItem.description}
+              </Text>
+              <Text
+                style={{
+                  ...styles.leadText,
+                  color: isDarkMode ? '#f4f4f4' : 'black',
+                }}>
+                Status: {selectedItem.status}
+              </Text>
+            </Modal>
+          </Portal>
+        )}
       </SafeAreaView>
     );
   }
@@ -275,7 +331,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   leadText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'semibold',
   },
 });
