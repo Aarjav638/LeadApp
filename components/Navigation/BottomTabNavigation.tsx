@@ -49,7 +49,13 @@ export default function BottomTabNavigator() {
                 style={{marginRight: '10%'}}
                 onPress={
                   db
-                    ? () => handleDownload(db)
+                    ? () => {
+                        try {
+                          handleDownload(db);
+                        } catch (error) {
+                          console.error('Failed to download:', error);
+                        }
+                      }
                     : () => Alert.alert('Database not found')
                 }
               />

@@ -1,12 +1,27 @@
 import {SQLiteDatabase} from 'react-native-sqlite-storage';
 import {getLeadItems} from '../database/dbServices';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
-import {Platform, PermissionsAndroid} from 'react-native';
+import {Alert, Platform} from 'react-native';
 import FileViewer from 'react-native-file-viewer';
+import {
+  PERMISSIONS,
+  RESULTS,
+  check,
+  requestMultiple,
+} from 'react-native-permissions';
+import {LeadType} from '../database/typing';
+import RNFS from 'react-native-fs';
+type PermissionStatus =
+  | 'unavailable'
+  | 'denied'
+  | 'limited'
+  | 'granted'
+  | 'blocked';
+
 const getLeads = async (db: SQLiteDatabase) => {
   try {
     if (db) {
-      const leads = await getLeadItems(db);
+      const leads: LeadType[] = await getLeadItems(db);
       return leads;
     }
   } catch (error) {
@@ -16,6 +31,10 @@ const getLeads = async (db: SQLiteDatabase) => {
 
 const handleDownload = async (db: SQLiteDatabase) => {
   const leads = await getLeads(db);
+  if (!leads) {
+    Alert.alert('No leads found');
+    return;
+  }
   const permission = await requestStoragePermission();
   if (!permission) {
     return;
@@ -71,12 +90,14 @@ const handleDownload = async (db: SQLiteDatabase) => {
 
       fileName: 'file',
       directory: Platform.OS === 'android' ? 'Downloads' : 'Documents',
+      base64: true,
     };
     let file = await RNHTMLtoPDF.convert(PDFOptions);
     if (!file.filePath) {
       return;
     }
     console.log('PDF generated', file.filePath);
+    await savePDF(file.filePath);
     FileViewer.open(file.filePath, {showOpenWithDialog: true})
       .then(() => {
         console.log('File opened successfully');
@@ -92,26 +113,46 @@ const handleDownload = async (db: SQLiteDatabase) => {
 export {handleDownload};
 
 export async function requestStoragePermission() {
-  var permissionGranted = false;
-  try {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-      {
-        title: 'Storage Permission',
-        message: 'This app needs access to your storage to download files.',
-        buttonNeutral: 'Ask Me Later',
-        buttonNegative: 'Cancel',
-        buttonPositive: 'OK',
-      },
-    );
-    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-      console.log('Storage permission granted');
-      permissionGranted = true;
-    } else {
-      console.log('Storage permission denied');
-    }
-    return permissionGranted;
-  } catch (err) {
-    console.warn(err);
+  const checkPermission: PermissionStatus = await check(
+    Platform.OS === 'android'
+      ? PERMISSIONS.ANDROID.ACCESS_MEDIA_LOCATION
+      : PERMISSIONS.IOS.PHOTO_LIBRARY,
+  );
+
+  if (checkPermission === RESULTS.GRANTED) {
+    return true;
+  }
+  if (checkPermission === RESULTS.BLOCKED) {
+    Alert.alert('Permission blocked', 'Please enable permission from settings');
+    return false;
+  }
+  const permission: Record<string, PermissionStatus> = await requestMultiple(
+    Platform.OS === 'android'
+      ? [
+          PERMISSIONS.ANDROID.ACCESS_MEDIA_LOCATION,
+          PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE,
+        ]
+      : [PERMISSIONS.IOS.PHOTO_LIBRARY],
+  );
+  if (
+    permission[
+      Platform.OS === 'android'
+        ? PERMISSIONS.ANDROID.ACCESS_MEDIA_LOCATION ||
+          PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE
+        : PERMISSIONS.IOS.PHOTO_LIBRARY
+    ] === RESULTS.GRANTED
+  ) {
+    return true;
   }
 }
+
+const savePDF = async (filePath: string) => {
+  try {
+    const newPath = `${RNFS.DownloadDirectoryPath}/leads_report.pdf`;
+    await RNFS.copyFile(filePath, newPath);
+    console.log('PDF saved at:', newPath);
+    Alert.alert('PDF saved at:', 'Download/leads_report.pdf');
+  } catch (err) {
+    console.error('Failed to save PDF file:', err);
+  }
+};
