@@ -31,7 +31,7 @@ const getLeads = async (db: SQLiteDatabase) => {
 
 const handleDownload = async (db: SQLiteDatabase) => {
   const leads = await getLeads(db);
-  if (!leads) {
+  if (leads?.length === 0) {
     Alert.alert('No leads found');
     return;
   }
