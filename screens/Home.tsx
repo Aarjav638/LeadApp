@@ -27,6 +27,7 @@ type HomeProps = NativeStackScreenProps<
 
 const Home = ({navigation, route}: HomeProps) => {
   const isDarkMode = useColorScheme() === 'dark';
+
   const {db, error, loading} = useDatabase();
   const [selectedItem, setSelectedItem] = useState<LeadType | null>(null);
   const [leads, setLeads] = useState<LeadType[]>([]);
@@ -258,6 +259,7 @@ const Home = ({navigation, route}: HomeProps) => {
           keyExtractor={(_, index) => index.toString()}
           renderItem={renderLeadItem}
         />
+
         {selectedItem && (
           <Portal>
             <Modal
